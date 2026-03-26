@@ -58,3 +58,12 @@ cargo build --release
 
 # Execute
 ./target/release/cgit-cli
+
+📡 TELEMETRY_PROTOCOL
+
+The right-hand ANALYTICS panel displays a live HEX-stream synchronized with the system clock. This indicates a stable connection to the GitHub API. If the stream stalls, check your network interface.
+📝 LICENSE
+
+MIT // YUKARI_DEV_SYSTEMS
+
+    "Everything is data. The rest is just noise."
