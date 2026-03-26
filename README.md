@@ -1,9 +1,8 @@
 # 📂 CGIT-CLI // SURGICAL_EXTRACTION_TOOL
 > **PROTOCOL:** NEURAL_LINK_ESTABLISHED
 > **VERSION:** 1.0.4
-> **AESTHETIC:** EDEX-UI_OBSIDIAN_PURPLE
 
-**cgit-cli** is a high-performance, terminal-based GitHub utility written in **Rust**. It provides a futuristic, minimalist interface for precision data extraction, allowing you to navigate and download specific repository nodes without full clones.
+**cgit-cli** is a terminal-based GitHub utility written in **Rust**. It provides a futuristic, minimalist interface for precision data extraction, allowing you to navigate and download specific repository nodes without full clones.
 
 ---
 
