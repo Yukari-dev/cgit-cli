@@ -49,7 +49,7 @@ Ensure your Rust toolchain is active before building.
 
 ```bash
 # Clone the repository
-git clone [https://github.com/Yukari/cgit-cli](https://github.com/Yukari/cgit-cli)
+git clone https://github.com/Yukari-dev/cgit-cli
 
 # Navigate to source
 cd cgit-cli
