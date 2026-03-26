@@ -1,3 +1,5 @@
+use std::{collections::HashSet, path::PathBuf};
+
 use ratatui::widgets::ListState;
 
 pub enum CurrentScreen {
@@ -12,10 +14,10 @@ pub struct App {
     pub repo: String,
     pub input_buffer: String,
     pub cursor_position: usize,
-    pub current_path: String,
+    pub current_path: PathBuf,
     pub items: Vec<RepoItem>,
     pub selected: usize,
-    pub marked: Vec<RepoItem>,
+    pub marked_paths: HashSet<String>,
     pub loading: bool,
     pub list_state: ListState,
 }
@@ -29,6 +31,22 @@ pub struct RepoItem {
 }
 
 impl App {
+    pub fn new(owner: String, repo: String) -> Self {
+        Self {
+            screen: CurrentScreen::Input,
+            owner,
+            repo,
+            input_buffer: String::new(),
+            cursor_position: 0,
+            current_path: PathBuf::new(),
+            items: Vec::new(),
+            selected: 0,
+            marked_paths: HashSet::new(),
+            loading: false,
+            list_state: ListState::default(),
+        }
+    }
+
     pub fn next(&mut self) {
         let i = match self.list_state.selected() {
             Some(i) => {
@@ -57,22 +75,6 @@ impl App {
         self.list_state.select(Some(i));
     }
 
-    pub fn new(owner: String, repo: String) -> Self {
-        Self {
-            screen: CurrentScreen::Input,
-            owner,
-            repo,
-            input_buffer: String::new(),
-            cursor_position: 0,
-            current_path: String::new(),
-            items: Vec::new(),
-            selected: 0,
-            marked: Vec::new(),
-            loading: false,
-            list_state: ListState::default(),
-        }
-    }
-
     pub fn move_cursor_left(&mut self) {
         if self.cursor_position > 0 {
             self.cursor_position -= 1;
@@ -95,6 +97,35 @@ impl App {
             let from_left_to_current_index = self.cursor_position - 1;
             self.input_buffer.remove(from_left_to_current_index);
             self.move_cursor_left();
+        }
+    }
+
+    pub fn enter_directory(&mut self) {
+        if let Some(index) = self.list_state.selected() {
+            let item = &self.items[index];
+            if item.is_dir {
+                self.current_path.push(&item.name);
+                self.screen = CurrentScreen::Loading;
+            }
+        }
+    }
+
+    pub fn go_back(&mut self) {
+        if self.current_path.pop() {
+            self.screen = CurrentScreen::Loading;
+        } else {
+            self.screen = CurrentScreen::Input;
+        }
+    }
+
+    pub fn toggle_mark(&mut self) {
+        if let Some(index) = self.list_state.selected() {
+            let path = self.items[index].path.clone();
+            if self.marked_paths.contains(&path) {
+                self.marked_paths.remove(&path);
+            } else {
+                self.marked_paths.insert(path);
+            }
         }
     }
 }

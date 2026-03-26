@@ -15,13 +15,15 @@ const LOGO: &str = r#"
                                                                                                                                                          
 "#;
 
-const THEME_PURPLE: Color = Color::Rgb(153, 41, 234);
-const THEME_MAGENTA: Color = Color::Rgb(255, 0, 255);
+const THEME_BG: Color = Color::Rgb(15, 17, 23);
+const THEME_PRIMARY: Color = Color::Rgb(136, 192, 208);
+const THEME_ACCENT: Color = Color::Rgb(163, 190, 140);
+const THEME_DIM: Color = Color::Rgb(76, 86, 106);
 
 pub fn render(f: &mut Frame, app: &App) {
     // 1. FIX: Always render background first so the whole terminal is covered
     f.render_widget(
-        Block::default().style(Style::default().bg(Color::Rgb(10, 10, 20))),
+        Block::default().style(Style::default().bg(THEME_BG)),
         f.size(),
     );
     let area = centered_rect(80, 50, f.size()); // Changed from 100 to 40 to actually center it
@@ -30,13 +32,17 @@ pub fn render(f: &mut Frame, app: &App) {
         CurrentScreen::Input => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Length(9), Constraint::Length(3)])
+                .constraints([
+                    Constraint::Length(9),
+                    Constraint::Length(2),
+                    Constraint::Length(3),
+                ])
                 .split(area);
 
             f.render_widget(
                 Paragraph::new(LOGO)
                     .alignment(Alignment::Center)
-                    .style(Style::default().fg(THEME_MAGENTA)),
+                    .style(Style::default().fg(THEME_PRIMARY)),
                 chunks[0],
             );
 
@@ -51,16 +57,80 @@ pub fn render(f: &mut Frame, app: &App) {
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
-                            .border_style(Style::default().fg(THEME_PURPLE))
-                            .title(input_title),
+                            .border_style(Style::default().fg(THEME_DIM))
+                            .title(Span::styled(input_title, Style::default().fg(THEME_ACCENT))),
                     )
                     .style(Style::default().fg(Color::White)),
-                chunks[1],
+                chunks[2],
             );
 
             f.set_cursor(
-                chunks[1].x + app.cursor_position as u16 + 1,
-                chunks[1].y + 1,
+                chunks[2].x + app.cursor_position as u16 + 1,
+                chunks[2].y + 1,
+            );
+        }
+        CurrentScreen::FileList => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(3),
+                    Constraint::Min(0),
+                    Constraint::Length(3),
+                ])
+                .split(f.size());
+            let display_path = app.current_path.to_string_lossy();
+            let header_text = format!("  {}/{}/{}", app.owner, app.repo, display_path);
+            let header = Paragraph::new(header_text).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(THEME_DIM))
+                    .style(Style::default().fg(Color::White)),
+            );
+            f.render_widget(header, chunks[0]);
+
+            let items: Vec<ListItem> = app
+                .items
+                .iter()
+                .map(|i| {
+                    let is_marked = app.marked_paths.contains(&i.path);
+
+                    let mark_icon = if is_marked { "󰄲 " } else { "  " };
+                    let type_icon = if i.is_dir { " " } else { " " };
+
+                    let content = format!("{}{} {}", mark_icon, type_icon, i.name);
+                    let style = if is_marked {
+                        Style::default()
+                            .fg(THEME_ACCENT)
+                            .add_modifier(Modifier::BOLD)
+                    } else if i.is_dir {
+                        Style::default().fg(THEME_PRIMARY)
+                    } else {
+                        Style::default().fg(Color::White)
+                    };
+                    ListItem::new(content).style(style)
+                })
+                .collect();
+
+            let list = List::new(items)
+                .block(Block::default().borders(Borders::LEFT | Borders::RIGHT))
+                .highlight_style(
+                    Style::default()
+                        .bg(THEME_DIM)
+                        .fg(THEME_ACCENT)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .highlight_symbol(" [  ] ");
+            f.render_stateful_widget(list, chunks[1], &mut app.list_state.clone());
+
+            let footer_text = format!(
+                " [ENTER] Open | [SPACE] Mark ({}) | [ESC] Back | [Q] Quit ",
+                app.marked_paths.len()
+            );
+            f.render_widget(
+                Paragraph::new(footer_text)
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(THEME_DIM)),
+                chunks[2],
             );
         }
         CurrentScreen::Loading => {
@@ -68,7 +138,7 @@ pub fn render(f: &mut Frame, app: &App) {
             let area = centered_rect(40, 10, f.size());
             let loading_block = Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(THEME_MAGENTA))
+                .border_style(Style::default().fg(THEME_ACCENT))
                 .title(" SYSTEM STATUS ");
 
             let loading_text = Paragraph::new("INITIALIZING CONNECTION...")
@@ -81,56 +151,6 @@ pub fn render(f: &mut Frame, app: &App) {
                 );
 
             f.render_widget(loading_text, area);
-        }
-        CurrentScreen::FileList => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(3),
-                    Constraint::Min(0),
-                    Constraint::Length(3),
-                ])
-                .split(f.size());
-            let path = format!(" REPO: {} / {} / {}", app.owner, app.repo, app.current_path);
-            let header = Paragraph::new(path).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(THEME_MAGENTA))
-                    .style(Style::default().fg(Color::White)),
-            );
-            f.render_widget(header, chunks[0]);
-
-            let items: Vec<ListItem> = app
-                .items
-                .iter()
-                .map(|i| {
-                    let icon = if i.is_dir { " [DIR] " } else { " [FILE] " };
-                    ListItem::new(format!("{} {}", icon, i.name)).style(
-                        Style::default().fg(if i.is_dir { THEME_PURPLE } else { Color::White }),
-                    )
-                })
-                .collect();
-
-            let list = List::new(items)
-                .block(Block::default().borders(Borders::LEFT | Borders::RIGHT))
-                .highlight_style(
-                    Style::default()
-                        .bg(THEME_MAGENTA)
-                        .fg(Color::Black)
-                        .add_modifier(Modifier::BOLD),
-                )
-                .highlight_symbol(" >> ");
-            f.render_stateful_widget(list, chunks[1], &mut app.list_state.clone());
-
-            let footer =
-                Paragraph::new(" [ENTER] Open/Download [SPACE] Mark [ESCAPE] Back [q] Quit")
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_style(Style::default().fg(THEME_PURPLE)),
-                    )
-                    .alignment(Alignment::Center);
-            f.render_widget(footer, chunks[2]);
         }
     }
 }
