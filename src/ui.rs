@@ -1,158 +1,304 @@
-use std::fmt::format;
-
-use crate::app::{App, CurrentScreen, RepoItem};
+use crate::app::{App, CurrentScreen};
 use ratatui::{prelude::*, widgets::*};
 
-const LOGO: &str = r#"
- _______  _______ __________________
-(  ____ \(  ____ \\__   __/\__   __/
-| (    \/| (    \/   ) (      ) (   
-| |      | |         | |      | |   
-| |      | | ____    | |      | |   
-| |      | | \_  )   | |      | |   
-| (____/\| (___) |___) (___   | |   
-(_______/(_______)\_______/   )_(   
-                                                                                                                                                         
-"#;
+// EDEX-UI Color Palette
+const BG: Color = Color::Rgb(0, 0, 0);
+const CYAN: Color = Color::Rgb(0, 255, 255);
+const CYAN_DIM: Color = Color::Rgb(0, 140, 140);
+const CYAN_DARK: Color = Color::Rgb(0, 60, 60);
+const BLUE: Color = Color::Rgb(0, 120, 255);
+const BLUE_DIM: Color = Color::Rgb(0, 60, 120);
+const WHITE: Color = Color::Rgb(220, 220, 220);
+const DIM: Color = Color::Rgb(50, 50, 50);
+const GREEN: Color = Color::Rgb(0, 255, 140);
+const RED: Color = Color::Rgb(255, 60, 60);
 
-const THEME_BG: Color = Color::Rgb(15, 17, 23);
-const THEME_PRIMARY: Color = Color::Rgb(136, 192, 208);
-const THEME_ACCENT: Color = Color::Rgb(163, 190, 140);
-const THEME_DIM: Color = Color::Rgb(76, 86, 106);
+const LOGO: &str = concat!(
+    " ██████╗ ██████╗ ██╗████████╗\n",
+    "██╔════╝██╔════╝ ██║╚══██╔══╝\n",
+    "██║     ██║  ███╗██║   ██║   \n",
+    "██║     ██║   ██║██║   ██║   \n",
+    "╚██████╗╚██████╔╝██║   ██║   \n",
+    " ╚═════╝ ╚═════╝ ╚═╝   ╚═╝   \n",
+);
+
+const TAGLINE: &str = "[ GITHUB SURGICAL EXTRACTION TOOL ]";
 
 pub fn render(f: &mut Frame, app: &App) {
-    // 1. FIX: Always render background first so the whole terminal is covered
-    f.render_widget(
-        Block::default().style(Style::default().bg(THEME_BG)),
-        f.size(),
-    );
-    let area = centered_rect(80, 50, f.size()); // Changed from 100 to 40 to actually center it
+    f.render_widget(Block::default().style(Style::default().bg(BG)), f.size());
 
     match app.screen {
-        CurrentScreen::Input => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(9),
-                    Constraint::Length(2),
-                    Constraint::Length(3),
-                ])
-                .split(area);
+        CurrentScreen::Input => render_input(f, app),
+        CurrentScreen::FileList => render_file_list(f, app),
+        CurrentScreen::Loading => render_loading(f, app),
+    }
+}
 
-            f.render_widget(
-                Paragraph::new(LOGO)
-                    .alignment(Alignment::Center)
-                    .style(Style::default().fg(THEME_PRIMARY)),
-                chunks[0],
-            );
+fn render_input(f: &mut Frame, app: &App) {
+    let area = f.size();
 
-            let input_title = if app.loading {
-                " [ FETCHING CONTENT... ] "
-            } else {
-                " [ Repository URL ] "
-            };
+    // outer border
+    f.render_widget(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_style(Style::default().fg(CYAN_DIM))
+            .title(Span::styled(
+                "╡ CGIT // NEURAL LINK ESTABLISHED ╞",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ))
+            .title_alignment(Alignment::Center)
+            .style(Style::default().bg(BG)),
+        area,
+    );
 
-            f.render_widget(
-                Paragraph::new(app.input_buffer.as_str())
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_style(Style::default().fg(THEME_DIM))
-                            .title(Span::styled(input_title, Style::default().fg(THEME_ACCENT))),
-                    )
-                    .style(Style::default().fg(Color::White)),
-                chunks[2],
-            );
+    let inner = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(20),
+            Constraint::Length(8),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(3),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Percentage(20),
+        ])
+        .margin(2)
+        .split(area);
 
-            f.set_cursor(
-                chunks[2].x + app.cursor_position as u16 + 1,
-                chunks[2].y + 1,
-            );
-        }
-        CurrentScreen::FileList => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(3),
-                    Constraint::Min(0),
-                    Constraint::Length(3),
-                ])
-                .split(f.size());
-            let display_path = app.current_path.to_string_lossy();
-            let header_text = format!("  {}/{}/{}", app.owner, app.repo, display_path);
-            let header = Paragraph::new(header_text).block(
+    // logo
+    f.render_widget(
+        Paragraph::new(LOGO)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(CYAN).add_modifier(Modifier::BOLD)),
+        inner[1],
+    );
+
+    // tagline
+    f.render_widget(
+        Paragraph::new(TAGLINE)
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(CYAN_DIM)),
+        inner[3],
+    );
+
+    // divider
+    f.render_widget(
+        Paragraph::new("─".repeat(area.width as usize / 2))
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(DIM)),
+        inner[4],
+    );
+
+    // input box
+    let input_label = if app.loading {
+        "⟨ SCANNING REPOSITORY... ⟩"
+    } else {
+        "⟨ ENTER TARGET REPOSITORY ⟩"
+    };
+
+    let input_color = if app.loading { BLUE } else { CYAN };
+
+    // center the input box horizontally
+    let input_row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(20),
+            Constraint::Percentage(60),
+            Constraint::Percentage(20),
+        ])
+        .split(inner[5]);
+
+    f.render_widget(
+        Paragraph::new(app.input_buffer.as_str())
+            .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(THEME_DIM))
-                    .style(Style::default().fg(Color::White)),
-            );
-            f.render_widget(header, chunks[0]);
-
-            let items: Vec<ListItem> = app
-                .items
-                .iter()
-                .map(|i| {
-                    let is_marked = app.marked_paths.contains(&i.path);
-
-                    let mark_icon = if is_marked { "󰄲 " } else { "  " };
-                    let type_icon = if i.is_dir { " " } else { " " };
-
-                    let content = format!("{}{} {}", mark_icon, type_icon, i.name);
-                    let style = if is_marked {
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(input_color))
+                    .title(Span::styled(
+                        input_label,
                         Style::default()
-                            .fg(THEME_ACCENT)
-                            .add_modifier(Modifier::BOLD)
-                    } else if i.is_dir {
-                        Style::default().fg(THEME_PRIMARY)
-                    } else {
-                        Style::default().fg(Color::White)
-                    };
-                    ListItem::new(content).style(style)
-                })
-                .collect();
+                            .fg(input_color)
+                            .add_modifier(Modifier::BOLD),
+                    ))
+                    .title_alignment(Alignment::Center),
+            )
+            .style(Style::default().fg(WHITE).bg(BG)),
+        input_row[1],
+    );
 
-            let list = List::new(items)
-                .block(Block::default().borders(Borders::LEFT | Borders::RIGHT))
-                .highlight_style(
-                    Style::default()
-                        .bg(THEME_DIM)
-                        .fg(THEME_ACCENT)
-                        .add_modifier(Modifier::BOLD),
-                )
-                .highlight_symbol(" [  ] ");
-            f.render_stateful_widget(list, chunks[1], &mut app.list_state.clone());
+    f.set_cursor(
+        input_row[1].x + app.cursor_position as u16 + 1,
+        input_row[1].y + 1,
+    );
 
-            let footer_text = format!(
-                " [ENTER] Open | [SPACE] Mark ({}) | [ESC] Back | [Q] Quit ",
-                app.marked_paths.len()
-            );
-            f.render_widget(
-                Paragraph::new(footer_text)
-                    .alignment(Alignment::Center)
-                    .style(Style::default().fg(THEME_DIM)),
-                chunks[2],
-            );
-        }
-        CurrentScreen::Loading => {
-            // 2. Futuristic Loading Screen
-            let area = centered_rect(40, 10, f.size());
-            let loading_block = Block::default()
+    // hint
+    f.render_widget(
+        Paragraph::new("e.g.  owner/repo  or  https://github.com/owner/repo")
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(DIM)),
+        inner[7],
+    );
+}
+
+fn render_file_list(f: &mut Frame, app: &App) {
+    let area = f.size();
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    // header
+    let display_path = app.current_path.to_string_lossy();
+    let path_display = if display_path.is_empty() {
+        format!(" ⟨ {}/{} ⟩ ", app.owner, app.repo)
+    } else {
+        format!(" ⟨ {}/{}/{} ⟩ ", app.owner, app.repo, display_path)
+    };
+
+    f.render_widget(
+        Paragraph::new(path_display.as_str())
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Double)
+                    .border_style(Style::default().fg(CYAN_DIM))
+                    .title(Span::styled(
+                        " CGIT // FILE SYSTEM ",
+                        Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                    ))
+                    .title_alignment(Alignment::Left)
+                    .title_bottom(Span::styled(
+                        format!(" {} ITEMS ", app.items.len()),
+                        Style::default().fg(CYAN_DIM),
+                    ))
+                    .style(Style::default().bg(BG)),
+            )
+            .style(Style::default().fg(WHITE))
+            .alignment(Alignment::Center),
+        chunks[0],
+    );
+
+    // file list
+    let items: Vec<ListItem> = app
+        .items
+        .iter()
+        .map(|i| {
+            let is_marked = app.marked_paths.contains(&i.path);
+            let mark = if is_marked { "◆" } else { "◇" };
+            let icon = if i.is_dir { "▶ " } else { "  " };
+            let content = format!(" {} {}  {}", mark, icon, i.name);
+
+            let style = if is_marked {
+                Style::default().fg(GREEN).add_modifier(Modifier::BOLD)
+            } else if i.is_dir {
+                Style::default().fg(CYAN)
+            } else {
+                Style::default().fg(WHITE)
+            };
+
+            ListItem::new(content).style(style)
+        })
+        .collect();
+
+    let list = List::new(items)
+        .block(
+            Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(THEME_ACCENT))
-                .title(" SYSTEM STATUS ");
+                .border_type(BorderType::Plain)
+                .border_style(Style::default().fg(DIM))
+                .style(Style::default().bg(BG)),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(CYAN_DARK)
+                .fg(CYAN)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("▶▶ ");
 
-            let loading_text = Paragraph::new("INITIALIZING CONNECTION...")
+    f.render_stateful_widget(list, chunks[1], &mut app.list_state.clone());
+
+    // footer
+    let marked_count = app.marked_paths.len();
+    let marked_color = if marked_count > 0 { GREEN } else { DIM };
+
+    let footer_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+        ])
+        .split(chunks[2]);
+
+    let keys = [
+        ("[ENTER]", "OPEN", CYAN),
+        ("[SPACE]", "MARK", marked_color),
+        (
+            "[D]",
+            "DOWNLOAD",
+            if marked_count > 0 { GREEN } else { DIM },
+        ),
+        ("[ESC]", "BACK", BLUE),
+    ];
+
+    for (i, (key, label, color)) in keys.iter().enumerate() {
+        f.render_widget(
+            Paragraph::new(format!(" {} {} ", key, label))
                 .alignment(Alignment::Center)
-                .block(loading_block)
-                .style(
-                    Style::default()
-                        .fg(Color::White)
-                        .add_modifier(Modifier::BOLD),
-                );
-
-            f.render_widget(loading_text, area);
-        }
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_type(BorderType::Plain)
+                        .border_style(Style::default().fg(*color)),
+                )
+                .style(Style::default().fg(*color).add_modifier(Modifier::BOLD)),
+            footer_chunks[i],
+        );
     }
+}
+
+fn render_loading(f: &mut Frame, app: &App) {
+    let area = centered_rect(50, 20, f.size());
+
+    f.render_widget(
+        Paragraph::new(vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "◆◆◆  EXTRACTING DATA  ◆◆◆",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+            Line::from(Span::styled(
+                "CONNECTING TO GITHUB NEURAL NETWORK...",
+                Style::default().fg(CYAN_DIM),
+            )),
+        ])
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .border_style(Style::default().fg(CYAN))
+                .title(Span::styled(
+                    " SYSTEM STATUS ",
+                    Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                ))
+                .title_alignment(Alignment::Center)
+                .style(Style::default().bg(BG)),
+        ),
+        area,
+    );
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

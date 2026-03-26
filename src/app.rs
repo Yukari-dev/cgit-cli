@@ -16,13 +16,12 @@ pub struct App {
     pub cursor_position: usize,
     pub current_path: PathBuf,
     pub items: Vec<RepoItem>,
-    pub selected: usize,
     pub marked_paths: HashSet<String>,
     pub loading: bool,
     pub list_state: ListState,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RepoItem {
     pub name: String,
     pub path: String,
@@ -40,7 +39,6 @@ impl App {
             cursor_position: 0,
             current_path: PathBuf::new(),
             items: Vec::new(),
-            selected: 0,
             marked_paths: HashSet::new(),
             loading: false,
             list_state: ListState::default(),
