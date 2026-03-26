@@ -5,7 +5,7 @@ mod ui;
 
 use crate::{
     app::{App, CurrentScreen},
-    download::{download_file, download_recursive},
+    download::download_recursive,
     github_api::{fetch_contents, parse_github_url},
 };
 use anyhow::Result;
@@ -17,6 +17,7 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 use std::io::stdout;
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,10 +29,16 @@ async fn main() -> Result<()> {
 
     let mut app = App::new("Yukari-dev".to_string(), "Netmon".to_string());
 
+    let (tx, mut rx) = mpsc::channel::<String>(100);
+
     loop {
+        while let Ok(msg) = rx.try_recv() {
+            app.add_log(msg);
+        }
         terminal.draw(|f| {
             ui::render(f, &app);
         })?;
+
         if event::poll(std::time::Duration::from_millis(16))?
             && let event::Event::Key(key) = event::read()?
             && key.kind == KeyEventKind::Press
@@ -45,6 +52,9 @@ async fn main() -> Result<()> {
                             app.toggle_mark();
                         }
                     }
+                    KeyCode::Char('a') => {
+                        app.toggle_select_all();
+                    }
                     KeyCode::Char('d') => {
                         let owner = app.owner.clone();
                         let repo = app.repo.clone();
@@ -54,9 +64,14 @@ async fn main() -> Result<()> {
                             .filter(|i| app.marked_paths.contains(&i.path))
                             .cloned()
                             .collect();
+                        let tx_clone = tx.clone();
                         tokio::spawn(async move {
                             for item in marked_items {
-                                let _ = download_recursive(&owner, &repo, item).await;
+                                let name = item.name.clone();
+                                if download_recursive(&owner, &repo, item).await.is_ok() {
+                                    let _ =
+                                        tx_clone.send(format!("SUCCESS: Extracted {}", name)).await;
+                                }
                             }
                         });
                     }

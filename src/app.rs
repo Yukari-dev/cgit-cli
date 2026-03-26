@@ -19,6 +19,7 @@ pub struct App {
     pub marked_paths: HashSet<String>,
     pub loading: bool,
     pub list_state: ListState,
+    pub logs: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +43,7 @@ impl App {
             marked_paths: HashSet::new(),
             loading: false,
             list_state: ListState::default(),
+            logs: Vec::new(),
         }
     }
 
@@ -124,6 +126,25 @@ impl App {
             } else {
                 self.marked_paths.insert(path);
             }
+        }
+    }
+
+    pub fn add_log(&mut self, message: String) {
+        self.logs.push(message);
+        if self.logs.len() > 1 {
+            self.logs.remove(0);
+        }
+    }
+
+    pub fn toggle_select_all(&mut self) {
+        if self.marked_paths.len() == self.items.len() && !self.items.is_empty() {
+            self.marked_paths.clear();
+            self.add_log("MARK: ALL_CLEARED".to_string());
+        } else {
+            for item in &self.items {
+                self.marked_paths.insert(item.path.clone());
+            }
+            self.add_log(format!("MARK: {}_ITEMS_SELECTED", self.items.len()));
         }
     }
 }
