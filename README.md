@@ -56,8 +56,12 @@ cd cgit-cli
 # Build release binary
 cargo build --release
 
+# Make it global
+cargo install --path .
+
 # Execute
-./target/release/cgit-cli
+cgit-cli
+```
 
 📡 TELEMETRY_PROTOCOL
 
