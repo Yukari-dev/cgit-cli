@@ -4,6 +4,9 @@
 
 **cgit-cli** is a terminal-based GitHub utility written in **Rust**. It provides a futuristic, minimalist interface for precision data extraction, allowing you to navigate and download specific repository nodes without full clones.
 
+<img width="1341" height="655" alt="cgit-cli" src="https://github.com/user-attachments/assets/fcf85e75-0712-405e-b26e-c902feb754c2" />
+
+
 ---
 
 ## ⚡ SYSTEM_FEATURES
